@@ -1,6 +1,7 @@
 from flask import current_app
 import requests
 from datetime import datetime, timezone
+from dateutil import parser as dateutil_parser
 import time
 import json
 import os
@@ -95,10 +96,7 @@ class OllamaService:
                         }
                     else:
                         try:
-                            # Handle microseconds by truncating them
-                            expires_at = model['expires_at'].replace('Z', '+00:00')
-                            expires_at = expires_at.split('.')[0] + '+00:00'
-                            expires_dt = datetime.fromisoformat(expires_at)
+                            expires_dt = dateutil_parser.isoparse(model['expires_at'])
                             local_dt = expires_dt.astimezone()
                             relative_time = self.format_relative_time(expires_dt)
                             tz_abbr = time.strftime('%Z')
