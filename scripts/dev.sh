@@ -7,14 +7,14 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Check if virtual environment exists
-if [ ! -d "venv" ]; then
+if [ ! -d ".venv" ]; then
     echo -e "${YELLOW}Creating virtual environment...${NC}"
-    python -m venv venv
+    python -m venv .venv
 fi
 
 # Activate virtual environment
 echo -e "${YELLOW}Activating virtual environment...${NC}"
-source venv/bin/activate
+source .venv/bin/activate
 
 # Install dependencies
 echo -e "${YELLOW}Installing dependencies...${NC}"
