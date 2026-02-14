@@ -386,6 +386,11 @@
                             <span class="detail-label">Size: </span>
                             <span class="detail-value ms-1">{{ model.formatted_size }}</span>
                         </div>
+                        <div class="detail-item">
+                            <span class="detail-icon">🖥️</span>
+                            <span class="detail-label">CPU/GPU: </span>
+                            <span class="detail-value ms-1">{{ model.memory_split.display }}</span>
+                        </div>
                         {% if model.expires_at %}
                         <div class="expires-section">
                             <div class="detail-item">
@@ -441,6 +446,9 @@
                         {% endif %}
                         {% if model.size %}
                         <div class="history-detail">{{ model.size }}</div>
+                        {% endif %}
+                        {% if model.cpu_gpu_split %}
+                        <div class="history-detail">🖥️ CPU/GPU: {{ model.cpu_gpu_split }}</div>
                         {% endif %}
                         <div class="history-duration">
                             <span class="detail-icon">⏱️</span>
