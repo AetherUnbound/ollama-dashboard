@@ -38,6 +38,47 @@ class OllamaService:
             size_bytes /= 1024.0
         return f"{size_bytes:.2f} TB"
 
+    def calculate_memory_split(self, total_size, vram_size):
+        """Calculate CPU/GPU memory split with formatted sizes and percentages"""
+        if total_size == 0:
+            return {
+                'cpu_size': '0 B',
+                'cpu_percent': 0,
+                'gpu_size': '0 B',
+                'gpu_percent': 0,
+                'display': 'N/A'
+            }
+        
+        # Handle edge cases
+        vram_size = vram_size or 0
+        if vram_size > total_size:
+            vram_size = total_size
+        
+        cpu_bytes = total_size - vram_size
+        gpu_bytes = vram_size
+        
+        cpu_percent = round((cpu_bytes / total_size) * 100)
+        gpu_percent = round((gpu_bytes / total_size) * 100)
+        
+        cpu_size_formatted = self.format_size(cpu_bytes)
+        gpu_size_formatted = self.format_size(gpu_bytes)
+        
+        # Build display string - only show non-zero components
+        if cpu_percent == 0:
+            display = f"{gpu_size_formatted} (100% GPU)"
+        elif gpu_percent == 0:
+            display = f"{cpu_size_formatted} (100% CPU)"
+        else:
+            display = f"{cpu_size_formatted} ({cpu_percent}%) / {gpu_size_formatted} ({gpu_percent}%)"
+        
+        return {
+            'cpu_size': cpu_size_formatted,
+            'cpu_percent': cpu_percent,
+            'gpu_size': gpu_size_formatted,
+            'gpu_percent': gpu_percent,
+            'display': display
+        }
+
     def format_relative_time(self, target_dt):
         now = datetime.now(timezone.utc)
         diff = target_dt - now
@@ -80,6 +121,11 @@ class OllamaService:
                 # Format size
                 model['formatted_size'] = self.format_size(model['size'])
                 
+                # Calculate CPU/GPU memory split
+                size_vram = model.get('size_vram', 0)
+                memory_split = self.calculate_memory_split(model['size'], size_vram)
+                model['memory_split'] = memory_split
+                
                 # Format families
                 families = model.get('details', {}).get('families', [])
                 if families:
@@ -114,7 +160,8 @@ class OllamaService:
                     'name': model['name'],
                     'families': model.get('families_str', ''),
                     'parameter_size': model.get('details', {}).get('parameter_size', ''),
-                    'size': model.get('formatted_size', '')
+                    'size': model.get('formatted_size', ''),
+                    'cpu_gpu_split': memory_split['display']
                 })
             
             if current_models:
