@@ -1,5 +1,3 @@
-version: '3'
-
 services:
   web:
     build:
@@ -11,15 +9,13 @@ services:
       - OLLAMA_HOST=host.docker.internal
       - OLLAMA_PORT=11434
       - FLASK_APP=wsgi.py
-    networks:
-      - app_network
+      # Add the timezone you want results displayed in
+      # - TZ=America/Los_Angeles
+    env_file:
+      - .env
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
       - ../history.json:/app/history.json
       - ../app/static:/app/app/static:ro
       - ../app/templates:/app/app/templates:ro
-
-networks:
-  app_network:
-    driver: bridge 
