@@ -13,13 +13,21 @@ def index():
         if not ollama_service.app:
             ollama_service.init_app(current_app)
         models = ollama_service.get_running_models()
+        history = ollama_service.get_history()
+        columns = current_app.config.get('DASHBOARD_COLUMNS', 1)
         return render_template('index.html', 
                              models=models, 
+                             history=history,
+                             columns=columns,
                              error=None,
                              timezone=datetime.now().strftime('%Z'))
     except Exception as e:
+        history = ollama_service.get_history() if ollama_service.app else []
+        columns = current_app.config.get('DASHBOARD_COLUMNS', 1)
         return render_template('index.html', 
                              models=[], 
+                             history=history,
+                             columns=columns,
                              error=str(e),
                              timezone=datetime.now().strftime('%Z'))
 

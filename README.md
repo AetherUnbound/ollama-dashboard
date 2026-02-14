@@ -98,6 +98,11 @@ The dashboard can be configured using environment variables:
 - `OLLAMA_PORT`: Ollama server port (default: 11434)
 - `MAX_HISTORY`: Maximum number of history entries to keep (default: 50)
 - `HISTORY_FILE`: Path to history file (default: history.json)
+- `DASHBOARD_COLUMNS`: Maximum number of columns for model cards (default: 1)
+  - `1`: Single column layout (recommended for 1 model)
+  - `2`: Up to 2 columns on tablet/desktop
+  - `3`: Up to 3 columns on desktop
+  - Layout automatically scales down on smaller screens
 
 When running with Docker, these are pre-configured in the `docker-compose.yml` file.
 

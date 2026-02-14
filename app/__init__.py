@@ -9,6 +9,7 @@ class Config:
     OLLAMA_PORT = int(os.getenv('OLLAMA_PORT', 11434))
     MAX_HISTORY = int(os.getenv('MAX_HISTORY', 50))
     HISTORY_FILE = os.getenv('HISTORY_FILE', 'history.json')
+    DASHBOARD_COLUMNS = int(os.getenv('DASHBOARD_COLUMNS', 1))
     STATIC_URL_PATH = ''
     STATIC_FOLDER = 'static'
     TEMPLATE_FOLDER = 'templates'

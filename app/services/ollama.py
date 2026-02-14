@@ -204,6 +204,10 @@ class OllamaService:
         with open(self.app.config['HISTORY_FILE'], 'w') as f:
             json.dump(list(self.history), f)
 
+    def get_history(self):
+        """Return the history as a list"""
+        return list(self.history)
+
     def format_datetime(self, value):
         try:
             if isinstance(value, str):
