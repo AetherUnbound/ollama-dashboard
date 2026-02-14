@@ -15,19 +15,23 @@ def index():
         models = ollama_service.get_running_models()
         history = ollama_service.get_history()
         columns = current_app.config.get('DASHBOARD_COLUMNS', 1)
+        refresh_interval = current_app.config.get('REFRESH_INTERVAL', 30)
         return render_template('index.html', 
                              models=models, 
                              history=history,
                              columns=columns,
+                             refresh_interval=refresh_interval,
                              error=None,
                              timezone=datetime.now().strftime('%Z'))
     except Exception as e:
         history = ollama_service.get_history() if ollama_service.app else []
         columns = current_app.config.get('DASHBOARD_COLUMNS', 1)
+        refresh_interval = current_app.config.get('REFRESH_INTERVAL', 30)
         return render_template('index.html', 
                              models=[], 
                              history=history,
                              columns=columns,
+                             refresh_interval=refresh_interval,
                              error=str(e),
                              timezone=datetime.now().strftime('%Z'))
 

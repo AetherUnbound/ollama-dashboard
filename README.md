@@ -103,6 +103,8 @@ The dashboard can be configured using environment variables:
   - `2`: Up to 2 columns on tablet/desktop
   - `3`: Up to 3 columns on desktop
   - Layout automatically scales down on smaller screens
+- `REFRESH_INTERVAL`: Auto-refresh interval in seconds (default: 30)
+  - Set to `0` to disable auto-refresh
 
 When running with Docker, these are pre-configured in the `docker-compose.yml` file.
 
