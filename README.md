@@ -50,6 +50,22 @@ Ollama Dashboard provides a clean, minimal web interface to:
 - Docker (for containerized installation)
 - Ollama running locally
 
+## Quick Start
+
+If you have [`just`](https://github.com/casey/just) installed, common tasks are available as recipes:
+
+```bash
+just dev        # start dev server
+just test       # run tests
+just build      # build & start Docker container
+just up         # start existing Docker image
+just down       # stop Docker container
+just logs       # tail Docker logs
+just clear-history  # reset history.json
+```
+
+Run `just --list` to see all available recipes.
+
 ## Installation Options
 
 ### Option 1: Local Installation
@@ -82,10 +98,10 @@ git clone https://github.com/poiley/ollama-dashboard.git
 cd ollama-dashboard
 ```
 
-2. Build and run using the provided script:
+2. Build and run using Docker Compose:
 
 ```bash
-./scripts/build.sh
+just build
 ```
 
 The dashboard will be available at http://127.0.0.1:5000
@@ -96,7 +112,7 @@ The dashboard can be configured using environment variables:
 
 - `OLLAMA_HOST`: Ollama server host (default: localhost)
 - `OLLAMA_PORT`: Ollama server port (default: 11434)
-- `MAX_HISTORY`: Maximum number of history entries to keep (default: 50)
+- `HISTORY_RETENTION_DAYS`: Number of days of model session history to retain (default: 30)
 - `HISTORY_FILE`: Path to history file (default: history.json)
 - `DASHBOARD_COLUMNS`: Maximum number of columns for model cards (default: 1)
   - `1`: Single column layout (recommended for 1 model)

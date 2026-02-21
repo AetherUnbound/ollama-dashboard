@@ -8,23 +8,26 @@ A Flask-based dashboard for monitoring locally running Ollama models. The app co
 
 ### Development
 ```bash
-./scripts/dev.sh                                    # Setup venv and start dev server
+just dev                                            # Setup venv and start dev server
+# or directly:
+./scripts/dev.sh
 ```
 
 Development server runs at `http://127.0.0.1:5000` (use IP, not `localhost`)
 
 ### Production (Docker)
 ```bash
-./scripts/build.sh                                  # Build and start container
-docker-compose -f docker/docker-compose.yml up -d   # Start existing image
-docker-compose -f docker/docker-compose.yml down    # Stop container
+just build                                          # Build and start container (clean rebuild)
+just up                                             # Start existing image
+just down                                           # Stop container
+just logs                                           # Tail container logs
 ```
 
 ### Testing
 ```bash
-python -m pytest                                    # Run all tests
-python -m pytest tests/test_ollama_service.py       # Run specific test file
-python -m pytest tests/test_ollama_service.py::TestOllamaService::test_ping_endpoint  # Single test
+just test                                           # Run all tests
+just test-one tests/test_ollama_service.py          # Run specific test file
+just test-one tests/test_ollama_service.py::TestOllamaService::test_ping_endpoint  # Single test
 ```
 
 ## Architecture
@@ -40,8 +43,9 @@ python -m pytest tests/test_ollama_service.py::TestOllamaService::test_ping_endp
 - `OllamaService`: Singleton service that manages Ollama API communication and history
   - Initialized with `init_app(app)` to receive Flask app context
   - Handles API calls to `/api/ps` endpoint
-  - Manages `history.json` (deque with configurable max length)
-  - Formats model data (sizes, timestamps, relative times)
+  - Tracks model sessions in `history.json` (start/end times, change-only writes)
+  - Delegates all formatting to `format_utils`
+- `format_utils`: Standalone formatting functions (`format_size`, `format_datetime`, `format_time_ago`, `format_relative_time`, `format_duration`)
 
 **Routes** (`app/routes/`)
 - Blueprint registered in `main.py`
@@ -50,7 +54,7 @@ python -m pytest tests/test_ollama_service.py::TestOllamaService::test_ping_endp
 
 **Templates** (`app/templates/`)
 - Jinja2 templates with custom filters (`datetime`, `time_ago`)
-- Filters defined in `app/__init__.py` and delegated to `OllamaService` methods
+- Filters registered in `main.py` using functions from `app/services/format_utils`
 
 ### Data Flow
 1. Route handler calls `ollama_service.get_running_models()`
@@ -69,7 +73,7 @@ python -m pytest tests/test_ollama_service.py::TestOllamaService::test_ping_endp
 Environment variables (see `app/__init__.py:Config`):
 - `OLLAMA_HOST`: Ollama server host (default: `localhost`, Docker: `host.docker.internal`)
 - `OLLAMA_PORT`: Ollama server port (default: `11434`)
-- `MAX_HISTORY`: Max history entries (default: `50`)
+- `HISTORY_RETENTION_DAYS`: Days of model session history to retain (default: `30`)
 - `HISTORY_FILE`: History JSON path (default: `history.json`)
 
 ## Key Conventions
@@ -96,10 +100,11 @@ Two approaches for time display:
 - `format_time_ago()`: Relative time buckets (e.g., "about 2 hours", "a few minutes")
 
 ### History Management
-- History stored as deque (FIFO when max reached)
-- Each entry: `{timestamp: ISO string, models: [model objects]}`
-- Persisted to JSON after each update
-- Loaded on service initialization
+- History stored as a list of **model sessions** (start/end times per model run)
+- Each entry: `{model_name, started_at, ended_at (null if running), families, parameter_size, size, cpu_gpu_split}`
+- Only written to JSON when the model set changes (not every tick)
+- Entries older than `HISTORY_RETENTION_DAYS` pruned on load
+- `get_history()` computes and attaches `duration` to each session before returning
 
 ### Test Routes
 Test routes exist for previewing UI states (not currently in routes/main.py):
