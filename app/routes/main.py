@@ -1,5 +1,6 @@
 from flask import render_template, current_app
 from app.services.ollama import OllamaService
+from app.services.format_utils import format_datetime, format_time_ago
 from app.routes import bp
 from datetime import datetime
 
@@ -43,10 +44,4 @@ def init_app(app):
     """Initialize the blueprint with the app"""
     ollama_service.init_app(app)
     app.template_filter('datetime')(format_datetime)
-    app.template_filter('time_ago')(time_ago)
-
-def format_datetime(value):
-    return ollama_service.format_datetime(value)
-
-def time_ago(value):
-    return ollama_service.format_time_ago(value) 
+    app.template_filter('time_ago')(format_time_ago) 

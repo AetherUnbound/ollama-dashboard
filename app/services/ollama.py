@@ -1,25 +1,30 @@
 from flask import current_app
 import requests
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from dateutil import parser as dateutil_parser
 import time
 import json
 import os
-from collections import deque
+from app.services.format_utils import format_size, format_relative_time, format_duration
 
 class OllamaService:
     def __init__(self, app=None):
         self.app = app
+        self._previous_model_names = set()
         if app is not None:
             self.init_app(app)
         else:
-            self.history = deque(maxlen=50)  # Default max history
+            self.history = []
 
     def init_app(self, app):
         """Initialize the service with the Flask app"""
         self.app = app
         with self.app.app_context():
             self.history = self.load_history()
+            # Seed _previous_model_names from any currently-open sessions
+            self._previous_model_names = {
+                s['model_name'] for s in self.history if s.get('ended_at') is None
+            }
 
     def get_api_url(self):
         try:
@@ -60,8 +65,8 @@ class OllamaService:
         cpu_percent = round((cpu_bytes / total_size) * 100)
         gpu_percent = round((gpu_bytes / total_size) * 100)
         
-        cpu_size_formatted = self.format_size(cpu_bytes)
-        gpu_size_formatted = self.format_size(gpu_bytes)
+        cpu_size_formatted = format_size(cpu_bytes)
+        gpu_size_formatted = format_size(gpu_bytes)
         
         # Build display string - only show non-zero components
         if cpu_percent == 0:
@@ -119,7 +124,7 @@ class OllamaService:
             current_models = []
             for model in models:
                 # Format size
-                model['formatted_size'] = self.format_size(model['size'])
+                model['formatted_size'] = format_size(model['size'])
                 
                 # Calculate CPU/GPU memory split
                 size_vram = model.get('size_vram', 0)
@@ -144,7 +149,7 @@ class OllamaService:
                         try:
                             expires_dt = dateutil_parser.isoparse(model['expires_at'])
                             local_dt = expires_dt.astimezone()
-                            relative_time = self.format_relative_time(expires_dt)
+                            relative_time = format_relative_time(expires_dt)
                             tz_abbr = time.strftime('%Z')
                             model['expires_at'] = {
                                 'local': local_dt.strftime(f'%-I:%M %p, %b %-d ({tz_abbr})'),
@@ -166,6 +171,8 @@ class OllamaService:
             
             if current_models:
                 self.update_history(current_models)
+            else:
+                self.update_history([])
             
             return models
         except requests.exceptions.ConnectionError:
@@ -178,68 +185,80 @@ class OllamaService:
     def load_history(self):
         try:
             history_file = self.app.config['HISTORY_FILE']
-            max_history = self.app.config['MAX_HISTORY']
-            
+            retention_days = self.app.config.get('HISTORY_RETENTION_DAYS', 30)
+
             if os.path.exists(history_file):
                 with open(history_file, 'r') as f:
                     history = json.load(f)
-                    return deque(history, maxlen=max_history)
+
+                # Detect old format (list of dicts with 'timestamp' + 'models' keys)
+                if history and isinstance(history, list) and 'timestamp' in history[0] and 'models' in history[0]:
+                    history = []
+
+                # Prune entries older than retention window
+                cutoff = datetime.now() - timedelta(days=retention_days)
+                cutoff_iso = cutoff.isoformat()
+                history = [s for s in history if s.get('started_at', '') >= cutoff_iso]
+
+                # Close orphan sessions (ended_at is None) — we don't know real end time
+                for session in history:
+                    if session.get('ended_at') is None:
+                        session['ended_at'] = session['started_at']
+
+                return history
             else:
                 with open(history_file, 'w') as f:
                     json.dump([], f)
-                return deque(maxlen=max_history)
+                return []
         except Exception as e:
             print(f"Error handling history file: {str(e)}")
-            return deque(maxlen=50)  # Default max history
+            return []
 
     def update_history(self, models):
-        timestamp = datetime.now().isoformat()
-        self.history.appendleft({
-            'timestamp': timestamp,
-            'models': models
-        })
-        self.save_history()
+        current_names = {m['name'] for m in models}
+        changed = False
+        now = datetime.now().isoformat()
+
+        # Build lookup for current model data
+        model_data = {}
+        for m in models:
+            model_data[m['name']] = m
+
+        # New models → create sessions
+        new_names = current_names - self._previous_model_names
+        for name in new_names:
+            m = model_data[name]
+            self.history.insert(0, {
+                'model_name': name,
+                'started_at': now,
+                'ended_at': None,
+                'families': m.get('families', ''),
+                'parameter_size': m.get('parameter_size', ''),
+                'size': m.get('size', ''),
+                'cpu_gpu_split': m.get('cpu_gpu_split', ''),
+            })
+            changed = True
+
+        # Removed models → close sessions
+        removed_names = self._previous_model_names - current_names
+        for name in removed_names:
+            for session in self.history:
+                if session['model_name'] == name and session['ended_at'] is None:
+                    session['ended_at'] = now
+                    changed = True
+                    break
+
+        self._previous_model_names = current_names
+        if changed:
+            self.save_history()
 
     def save_history(self):
         with open(self.app.config['HISTORY_FILE'], 'w') as f:
-            json.dump(list(self.history), f)
+            json.dump(self.history, f)
 
     def get_history(self):
-        """Return the history as a list"""
-        return list(self.history)
-
-    def format_datetime(self, value):
-        try:
-            if isinstance(value, str):
-                # Handle timezone offset in the ISO format string
-                dt = datetime.fromisoformat(value.replace('Z', '+00:00').split('.')[0])
-            else:
-                dt = value
-            local_dt = dt.astimezone()
-            tz_abbr = time.strftime('%Z')
-            return local_dt.strftime(f'%-I:%M %p, %b %-d ({tz_abbr})')
-        except Exception as e:
-            return str(value)
-
-    def format_time_ago(self, value):
-        try:
-            if isinstance(value, str):
-                # Handle timezone offset in the ISO format string
-                dt = datetime.fromisoformat(value.replace('Z', '+00:00').split('.')[0])
-            else:
-                dt = value
-            
-            now = datetime.now(dt.tzinfo)
-            diff = now - dt
-            
-            minutes = diff.total_seconds() / 60
-            hours = minutes / 60
-            
-            if hours >= 1:
-                return f"{int(hours)} {'hour' if int(hours) == 1 else 'hours'}"
-            elif minutes >= 1:
-                return f"{int(minutes)} {'minute' if int(minutes) == 1 else 'minutes'}"
-            else:
-                return "less than a minute"
-        except Exception as e:
-            return str(value) 
+        """Return the history sorted newest-first by started_at, with duration computed."""
+        sessions = sorted(self.history, key=lambda s: s.get('started_at', ''), reverse=True)
+        for session in sessions:
+            session['duration'] = format_duration(session['started_at'], session.get('ended_at'))
+        return sessions 

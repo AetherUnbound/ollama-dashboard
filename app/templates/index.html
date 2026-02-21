@@ -428,37 +428,43 @@
             History
         </div>
         <div id="history-container">
-            {% for entry in history %}
+            {% for session in history %}
             <div class="history-item">
                 <div class="history-time">
-                    {{ entry.timestamp|datetime }}
+                    {{ session.started_at|datetime }}
+                    {% if session.ended_at %}
+                        → {{ session.ended_at|datetime }}
+                    {% else %}
+                        <span class="badge bg-success ms-1" style="font-size: 0.7rem;">Running</span>
+                    {% endif %}
                 </div>
                 <div class="history-content">
-                    {% for model in entry.models %}
                     <div class="history-model">
-                        <strong>{{ model.name.split(':')[0] }}</strong>
-                        <span class="history-version">{{ model.name.split(':')[1] if ':' in model.name else 'No Version' }}</span>
-                        {% if model.families %}
-                        <div class="history-detail">{{ model.families }}</div>
+                        <strong>{{ session.model_name.split(':')[0] }}</strong>
+                        <span class="history-version">{{ session.model_name.split(':')[1] if ':' in session.model_name else 'No Version' }}</span>
+                        {% if session.families %}
+                        <div class="history-detail">{{ session.families }}</div>
                         {% endif %}
-                        {% if model.parameter_size %}
-                        <div class="history-detail">{{ model.parameter_size }}</div>
+                        {% if session.parameter_size %}
+                        <div class="history-detail">{{ session.parameter_size }}</div>
                         {% endif %}
-                        {% if model.size %}
-                        <div class="history-detail">{{ model.size }}</div>
+                        {% if session.size %}
+                        <div class="history-detail">{{ session.size }}</div>
                         {% endif %}
-                        {% if model.cpu_gpu_split %}
-                        <div class="history-detail">🖥️ CPU/GPU: {{ model.cpu_gpu_split }}</div>
+                        {% if session.cpu_gpu_split %}
+                        <div class="history-detail">🖥️ CPU/GPU: {{ session.cpu_gpu_split }}</div>
                         {% endif %}
                         <div class="history-duration">
                             <span class="detail-icon">⏱️</span>
-                            Active for {{ entry.timestamp|time_ago }}
+                            {{ session.duration }}
                         </div>
                     </div>
-                    {% endfor %}
                 </div>
             </div>
             {% endfor %}
+            {% if not history %}
+            <div class="text-muted text-center py-4">No history yet</div>
+            {% endif %}
         </div>
     </div>
 

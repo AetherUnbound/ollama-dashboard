@@ -7,7 +7,7 @@ import os
 class Config:
     OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'localhost')
     OLLAMA_PORT = int(os.getenv('OLLAMA_PORT', 11434))
-    MAX_HISTORY = int(os.getenv('MAX_HISTORY', 50))
+    HISTORY_RETENTION_DAYS = int(os.getenv('HISTORY_RETENTION_DAYS', 30))
     HISTORY_FILE = os.getenv('HISTORY_FILE', 'history.json')
     DASHBOARD_COLUMNS = int(os.getenv('DASHBOARD_COLUMNS', 1))
     REFRESH_INTERVAL = int(os.getenv('REFRESH_INTERVAL', 30))
